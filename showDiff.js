@@ -148,14 +148,14 @@ const getControls = () => {
   return {
     isAccum:
       getCheckedValueFromNodeList(
-        document.querySelectorAll("#control input[name=isAccum]")
+        document.querySelectorAll(".control input[name=isAccum]")
       ) === "accum",
-    pref: fixPref(document.querySelector("#control select[name=pref]").value),
+    pref: fixPref(document.querySelector(".control select[name=pref]").value),
     useLogScale:
       getCheckedValueFromNodeList(
-        document.querySelectorAll("#control input[name=useLogScale]")
+        document.querySelectorAll(".control input[name=useLogScale]")
       ) === "log",
-    minDate: document.querySelector("#control input[name=minDate]").value || "",
+    minDate: document.querySelector(".control input[name=minDate]").value || "",
   };
 };
 
@@ -172,10 +172,10 @@ const bindEvents = (config, canvas, chartData) => {
   const event = (e) => {
     showChart(config, canvas, chartData, getControls());
   };
-  document.querySelectorAll("#control input").forEach((elem) => {
+  document.querySelectorAll(".control input").forEach((elem) => {
     elem.addEventListener("change", event);
   });
-  document.querySelectorAll("#control select").forEach((elem) => {
+  document.querySelectorAll(".control select").forEach((elem) => {
     elem.addEventListener("change", event);
   });
 };
@@ -290,7 +290,7 @@ const init = async () => {
   result.days = Array.from(result.daysSet).sort();
   delete result.daysSet;
   setPrefSelect(
-    document.querySelector("#control select[name=pref]"),
+    document.querySelector(".control select[name=pref]"),
     result.prefs,
     result.muni.accum.prefs[result.days[result.days.length - 1]]
   );

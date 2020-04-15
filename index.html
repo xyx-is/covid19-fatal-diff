@@ -4,42 +4,93 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>厚労省発表と自治体発表の死者数の比較</title>
+	<title>厚労省発表と自治体発表の死亡者数の比較</title>
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js"></script>
+	<style>
+		.control {
+			margin-top: 8px;
+		}
+		.control-group {
+			display: inline-block;
+			margin-right: 2.5em;
+		}
+
+		.control-title {
+			font-weight: bold;
+		}
+
+		.note {
+			margin-top: 5px;
+			font-size: small;
+		}
+		h1 {
+			margin-top: 8px;
+			margin-bottom: 5px;
+		}
+		h2 {
+			font-size: larger;
+			margin-bottom: 5px;
+		}
+		p{
+			margin-top: 5px;
+			margin-bottom: 5px;
+		}
+	</style>
 </head>
 
 <body>
-	<h1>厚労省発表と自治体発表の死者数の比較</h1>
-	<div style="width:95%;">
+	<h1>厚労省発表と自治体発表の死亡者数の比較</h1>
+	<p>新型コロナウイルス感染者数の統計について、<a href="#mhlw-note">厚生労働省は突合作業が完了した死亡者数のみを発表している</a>ため、自治体発表の死亡者数とずれが生じています。このチャートでは、それぞれの発表の死亡者数を比較します。</p>
+	<div style="width:98%;">
 		<canvas id="canvas"></canvas>
 	</div>
-	<div id="control">
-		<div>
+	<div class="control">
+		<div class="control-group">
+			<span class="control-title">データ種別:</span>
 			<label><input type="radio" name="isAccum" value="daily" />新規</label>
 			<label><input type="radio" name="isAccum" value="accum" checked />累計</label>
 		</div>
-		<div>
+		<div class="control-group">
+			<span class="control-title">Y軸:</span>
 			<label><input type="radio" name="useLogScale" value="linear" checked />Linear scale</label>
 			<label><input type="radio" name="useLogScale" value="log" />Log scale</label>
 		</div>
-		<div>
+		<div class="control-group">
+			<span class="control-title">都道府県:</span>
 			<select name="pref">
 				<option value="total" selected>全国</option>
 			</select>
 		</div>
-		<div>
-			<label><input type="text" name="minDate" value="2020-02-12" />以降</label>
+		<div class="control-group">
+			<span class="control-title">日付範囲:</span>
+			<label><input type="text" name="minDate" value="2020-02-12" size="12" />以降</label>
 		</div>
 	</div>
 	<h2>データ出典</h2>
-	<ul>
-		<li>自治体発表の集計: <a
-				href="https://github.com/swsoyee/2019-ncov-japan/blob/master/Data/death.csv">新型コロナウイルス感染速報</a>様より(https://github.com/swsoyee/2019-ncov-japan/blob/master/Data/death.csv)
+	<ul class="note">
+		<li>自治体発表の集計: <a href="https://github.com/swsoyee/2019-ncov-japan/blob/master/Data/death.csv">新型コロナウイルス感染速報</a>
+			(https://github.com/swsoyee/2019-ncov-japan/blob/master/Data/death.csv) 様より
+			(<a href="https://github.com/swsoyee/2019-ncov-japan/blob/master/LICENSE">MITライセンス</a>)
 		</li>
-		<li>厚労省発表: <a href="https://github.com/kaz-ogiwara/covid19/blob/master/data/data.json">東洋経済オンライン「新型コロナウイルス
-				国内感染の状況」</a>様より(https://github.com/kaz-ogiwara/covid19/blob/master/data/data.json)</li>
+		<li>厚労省発表:
+			<a href="https://github.com/kaz-ogiwara/covid19/blob/master/data/data.json">東洋経済オンライン「新型コロナウイルス国内感染の状況」</a>
+			(https://github.com/kaz-ogiwara/covid19/blob/master/data/data.json) 様より
+			(<a href="https://github.com/kaz-ogiwara/covid19/blob/master/LICENSE">MITライセンス</a>)
+		</li>
 	</ul>
-	<p>チャート描画: <a href="https://www.chartjs.org/" target="_blank">Chart.js</a></p>
+	<h2>補足</h2>
+	<ul class="note">
+		<li id="mhlw-note">厚生労働省 発表
+			<a href="https://www.mhlw.go.jp/stf/newpage_10829.html">「新型コロナウイルス感染症の現在の状況と厚生労働省の対応について（令和２年４月13日版）」</a>
+			の「※５」
+		</li>
+		<li>
+			チャート描画: <a href="https://www.chartjs.org/" target="_blank">Chart.js</a>
+			(<a href="https://github.com/chartjs/Chart.js/blob/master/LICENSE.md">MITライセンス</a>)
+		</li>
+		<li>Github: <a href="https://github.com/xyx-is/covid19-fatal-diff">https://github.com/xyx-is/covid19-fatal-diff</a></li>
+		<li>Github Pages: <a href="https://xyx-is.github.io/covid19-fatal-diff/">https://xyx-is.github.io/covid19-fatal-diff/</a></li>
+	</ul>
 	<script src="./showDiff.js"></script>
 </body>
 
