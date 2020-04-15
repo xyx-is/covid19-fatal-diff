@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>厚労省発表と自治体発表の死者数の比較</title>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js"></script>
+</head>
+
+<body>
+	<h1>厚労省発表と自治体発表の死者数の比較</h1>
+	<div style="width:95%;">
+		<canvas id="canvas"></canvas>
+	</div>
+	<div id="control">
+		<div>
+			<label><input type="radio" name="isAccum" value="daily" />新規</label>
+			<label><input type="radio" name="isAccum" value="accum" checked />累計</label>
+		</div>
+		<div>
+			<label><input type="radio" name="useLogScale" value="linear" checked />Linear scale</label>
+			<label><input type="radio" name="useLogScale" value="log" />Log scale</label>
+		</div>
+		<div>
+			<select name="pref">
+				<option value="total" selected>全国</option>
+			</select>
+		</div>
+		<div>
+			<label><input type="text" name="minDate" value="2020-02-12" />以降</label>
+		</div>
+	</div>
+	<h2>データ出典</h2>
+	<ul>
+		<li>自治体発表の集計: <a
+				href="https://github.com/swsoyee/2019-ncov-japan/blob/master/Data/death.csv">新型コロナウイルス感染速報</a>様より(https://github.com/swsoyee/2019-ncov-japan/blob/master/Data/death.csv)
+		</li>
+		<li>厚労省発表: <a href="https://github.com/kaz-ogiwara/covid19/blob/master/data/data.json">東洋経済オンライン「新型コロナウイルス
+				国内感染の状況」</a>様より(https://github.com/kaz-ogiwara/covid19/blob/master/data/data.json)</li>
+	</ul>
+	<p>チャート描画: <a href="https://www.chartjs.org/" target="_blank">Chart.js</a></p>
+	<script src="./showDiff.js"></script>
+</body>
+
+</html>
