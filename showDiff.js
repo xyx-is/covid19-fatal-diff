@@ -77,6 +77,7 @@ const getMhlwData = async (result) => {
       "https://raw.githubusercontent.com/kaz-ogiwara/covid19/master/data/data.json"
     )
   ).json();
+  const overwriteJsonData = await (await fetch("./Overwrite.json")).json();
   const totalTollsOffset = jsonData.transition.deaths.map((arr) => {
     return {
       date: dateString(arr[0], arr[1], arr[2]),
@@ -103,6 +104,15 @@ const getMhlwData = async (result) => {
       date: dateString(arr[0], arr[1], arr[2]),
       accumTollOfMhlw: arr.slice(3),
     };
+  });
+  overwriteJsonData.accumTollOfMhlw.forEach((arr, prefIndex) => {
+    if (arr) {
+      accumJsonData.forEach((obj) => {
+        if (obj.date in arr) {
+          obj.accumTollOfMhlw[prefIndex] = arr[obj.date];
+        }
+      });
+    }
   });
   accumJsonData.forEach((obj, index) => {
     if (index === 0) {
