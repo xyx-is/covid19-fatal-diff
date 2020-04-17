@@ -20,11 +20,11 @@ const dateString = (year, month, day) => {
 };
 
 const getNcovData = async () => {
-  // get death toll from https://github.com/swsoyee/2019-ncov-japan/blob/master/Data/death.csv
+  // get death toll from https://github.com/swsoyee/2019-ncov-japan/blob/master/50_Data/death.csv
   //   which is MIT licensed https://github.com/swsoyee/2019-ncov-japan/blob/master/LICENSE
   const csvTextData = await (
     await fetch(
-      "https://raw.githubusercontent.com/swsoyee/2019-ncov-japan/master/Data/death.csv"
+      "https://raw.githubusercontent.com/swsoyee/2019-ncov-japan/master/50_Data/death.csv"
     )
   ).text();
   const lines = csvTextData.replace("\r", "").split("\n");
