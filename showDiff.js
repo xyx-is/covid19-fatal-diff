@@ -156,15 +156,13 @@ const getControls = () => {
     }
   };
   return {
-    isAccum:
-      getCheckedValueFromNodeList(
-        document.querySelectorAll(".control input[name=isAccum]")
-      ) === "accum",
+    accumType: getCheckedValueFromNodeList(
+      document.querySelectorAll(".control input[name=accumType]")
+    ),
     pref: fixPref(document.querySelector(".control select[name=pref]").value),
-    useLogScale:
-      getCheckedValueFromNodeList(
-        document.querySelectorAll(".control input[name=useLogScale]")
-      ) === "log",
+    yScale: getCheckedValueFromNodeList(
+      document.querySelectorAll(".control input[name=yScale]")
+    ),
     minDate: document.querySelector(".control input[name=minDate]").value || "",
   };
 };
@@ -197,28 +195,25 @@ const showChart = (config, canvas, chartData, controlConfig) => {
     .filter((day) => day >= controlConfig.minDate)
     .sort();
   config.data.labels = labels;
-  const isAccumKey = controlConfig.isAccum ? "accum" : "daily";
+  const accumType = controlConfig.accumType;
   if (controlConfig.pref === "total") {
     config.data.datasets[0].data = labels.map(
-      (day) => chartData.mhlw[isAccumKey].total[day]
+      (day) => chartData.mhlw[accumType].total[day]
     );
     config.data.datasets[1].data = labels.map(
-      (day) => chartData.muni[isAccumKey].total[day]
+      (day) => chartData.muni[accumType].total[day]
     );
   } else {
     config.data.datasets[0].data = labels.map(
-      (day) => (chartData.mhlw[isAccumKey].prefs[day] || [])[controlConfig.pref]
+      (day) => (chartData.mhlw[accumType].prefs[day] || [])[controlConfig.pref]
     );
     config.data.datasets[1].data = labels.map(
-      (day) => (chartData.muni[isAccumKey].prefs[day] || [])[controlConfig.pref]
+      (day) => (chartData.muni[accumType].prefs[day] || [])[controlConfig.pref]
     );
   }
-  if (controlConfig.useLogScale) {
-    config.options.scales.yAxes[0].type = "logarithmic";
-  } else {
-    config.options.scales.yAxes[0].type = "linear";
-  }
-  if (controlConfig.isAccum) {
+
+  config.options.scales.yAxes[0].type = controlConfig.yScale;
+  if (controlConfig.accumType === "accum") {
     config.options.scales.yAxes[0].ticks.min = 0;
   } else {
     if ("min" in config.options.scales.yAxes[0].ticks) {
