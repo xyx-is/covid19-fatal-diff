@@ -310,6 +310,9 @@ const setPrefSelect = (select, result, lastDay) => {
 
     let option = document.createElement("option");
     option.setAttribute("value", prefIndex);
+    if (n === 0) {
+      option.setAttribute("disabled", "disabled");
+    }
     option.textContent = `${pref} (${n})`;
     select.appendChild(option);
   });
