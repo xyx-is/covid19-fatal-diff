@@ -1,5 +1,55 @@
 "use strict";
 
+const ALL_PREFECTURES = [
+  "北海道",
+  "青森",
+  "岩手",
+  "宮城",
+  "秋田",
+  "山形",
+  "福島",
+  "茨城",
+  "栃木",
+  "群馬",
+  "埼玉",
+  "千葉",
+  "東京",
+  "神奈川",
+  "新潟",
+  "富山",
+  "石川",
+  "福井",
+  "山梨",
+  "長野",
+  "岐阜",
+  "静岡",
+  "愛知",
+  "三重",
+  "滋賀",
+  "京都",
+  "大阪",
+  "兵庫",
+  "奈良",
+  "和歌山",
+  "鳥取",
+  "島根",
+  "岡山",
+  "広島",
+  "山口",
+  "徳島",
+  "香川",
+  "愛媛",
+  "高知",
+  "福岡",
+  "佐賀",
+  "長崎",
+  "熊本",
+  "大分",
+  "宮崎",
+  "鹿児島",
+  "沖縄",
+];
+
 // array1 + array2
 const arrayAdd = (array1, array2) => {
   return array1.map((n, i) => n + array2[i]);
@@ -13,22 +63,92 @@ const arraySum = (array) => {
   return array.reduce((a, b) => a + b);
 };
 
+const assocToMap = (assoc) => {
+  let result = {};
+  assoc.forEach((tuple) => {
+    result[tuple[0]] = values[tuple[1]];
+  });
+  return result;
+};
+
+const zipToMap = (keys, values) => {
+  let result = {};
+  keys.forEach((key, index) => {
+    result[key] = values[index];
+  });
+  return result;
+};
+
 const dateString = (year, month, day) => {
   return `${year.toString().padStart(4, "0")}-${month
     .toString()
     .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
 };
 
-const getNcovData = async () => {
-  // get death toll from https://github.com/swsoyee/2019-ncov-japan/blob/master/50_Data/death.csv
-  //   which is MIT licensed https://github.com/swsoyee/2019-ncov-japan/blob/master/LICENSE
+// pref: "total" | pref number
+const prefIsTotal = (pref) => {
+  return pref === "total";
+};
+
+/*
+ * result
+ *   "daily" | "accum"
+ *     day
+ *       "total" | pref[pref number]
+ *         "muni" | "mhlw"
+ *   days
+ */
+
+const getInitialResult = () => {
+  return {
+    daily: {},
+    accum: {},
+  };
+};
+
+// source: "muni" | "mhlw"
+// pref: "total" | pref number
+const setResult = (result, day, source, pref, dailyNum, accumNum) => {
+  [
+    [result.daily, dailyNum],
+    [result.accum, accumNum],
+  ].forEach((tuple) => {
+    const target = tuple[0];
+    const num = tuple[1];
+
+    // initialize
+    if (!target[day]) {
+      target[day] = {
+        total: { muni: null, mhlw: null },
+        pref: ALL_PREFECTURES.map((p) => ({
+          muni: null,
+          mhlw: null,
+        })),
+      };
+    }
+
+    if (prefIsTotal(pref)) {
+      target[day].total[source] = num;
+    } else {
+      target[day].pref[pref][source] = num;
+    }
+  });
+};
+
+const setResultDays = (result) => {
+  result.days = Object.keys(result.daily).sort();
+};
+
+//// fetch data
+
+const getNcovData = async (result) => {
   const csvTextData = await (
     await fetch(
       "https://raw.githubusercontent.com/swsoyee/2019-ncov-japan/master/50_Data/death.csv"
     )
   ).text();
   const lines = csvTextData.replace("\r", "").split("\n");
-  const prefs = lines[0].split(",").slice(1, 48);
+  const csvPrefs = lines[0].split(",").slice(1, 48);
   const csvData = lines.slice(1).map((str) => {
     const strs = str.split(",");
     const date = dateString(
@@ -52,26 +172,32 @@ const getNcovData = async () => {
     obj.accumTotalToll = arraySum(obj.accumToll);
   });
 
-  let result = {};
-  result.prefs = prefs;
-  result.daysSet = new Set();
-  result.muni = {
-    daily: { total: {}, prefs: {} },
-    accum: { total: {}, prefs: {} },
-  };
   csvData.forEach((obj) => {
-    result.daysSet.add(obj.date);
-    result.muni.daily.total[obj.date] = obj.dailyTotalToll;
-    result.muni.daily.prefs[obj.date] = obj.dailyToll;
-    result.muni.accum.total[obj.date] = obj.accumTotalToll;
-    result.muni.accum.prefs[obj.date] = obj.accumToll;
+    const dailyTollMap = zipToMap(csvPrefs, obj.dailyToll);
+    const accumTollMap = zipToMap(csvPrefs, obj.accumToll);
+    ALL_PREFECTURES.forEach((pref, prefIndex) => {
+      setResult(
+        result,
+        obj.date,
+        "muni",
+        prefIndex,
+        dailyTollMap[pref],
+        accumTollMap[pref]
+      );
+    });
+    setResult(
+      result,
+      obj.date,
+      "muni",
+      "total",
+      obj.dailyTotalToll,
+      obj.accumTotalToll
+    );
   });
   return result;
 };
 
 const getMhlwData = async (result) => {
-  // https://github.com/kaz-ogiwara/covid19/blob/master/data/data.json
-  // https://github.com/kaz-ogiwara/covid19/blob/master/LICENSE
   const jsonData = await (
     await fetch(
       "https://raw.githubusercontent.com/kaz-ogiwara/covid19/master/data/data.json"
@@ -81,66 +207,76 @@ const getMhlwData = async (result) => {
   const totalTollsOffset = jsonData.transition.deaths.map((arr) => {
     return {
       date: dateString(arr[0], arr[1], arr[2]),
-      accumTotalTollOfMhlw: arr[3],
+      accumTotalToll: arr[3],
     };
   });
   // fix total death tolls date offset
   const totalTolls = totalTollsOffset.slice(1).map((obj, index) => {
     return {
       date: totalTollsOffset[index].date,
-      accumTotalTollOfMhlw: obj.accumTotalTollOfMhlw,
+      accumTotalToll: obj.accumTotalToll,
     };
   });
   totalTolls.forEach((obj, index) => {
     if (index === 0) {
-      obj.dailyTotalTollOfMhlw = obj.accumTotalTollOfMhlw;
+      obj.dailyTotalToll = obj.accumTotalToll;
     } else {
-      obj.dailyTotalTollOfMhlw =
-        obj.accumTotalTollOfMhlw - totalTolls[index - 1].accumTotalTollOfMhlw;
+      obj.dailyTotalToll =
+        obj.accumTotalToll - totalTolls[index - 1].accumTotalToll;
     }
   });
   const accumJsonData = jsonData["prefectures-data"].deaths.map((arr) => {
     return {
       date: dateString(arr[0], arr[1], arr[2]),
-      accumTollOfMhlw: arr.slice(3),
+      accumToll: arr.slice(3),
     };
   });
   overwriteJsonData.accumTollOfMhlw.forEach((arr, prefIndex) => {
     if (arr) {
       accumJsonData.forEach((obj) => {
         if (obj.date in arr) {
-          obj.accumTollOfMhlw[prefIndex] = arr[obj.date];
+          obj.accumToll[prefIndex] = arr[obj.date];
         }
       });
     }
   });
   accumJsonData.forEach((obj, index) => {
     if (index === 0) {
-      obj.dailyTollOfMhlw = obj.accumTollOfMhlw;
+      obj.dailyToll = obj.accumToll;
     } else {
-      obj.dailyTollOfMhlw = arrayAdd(
-        obj.accumTollOfMhlw,
-        arrayScalarProd(-1, accumJsonData[index - 1].accumTollOfMhlw)
+      obj.dailyToll = arrayAdd(
+        obj.accumToll,
+        arrayScalarProd(-1, accumJsonData[index - 1].accumToll)
       );
     }
   });
 
-  result.mhlw = {
-    daily: { total: {}, prefs: {} },
-    accum: { total: {}, prefs: {} },
-  };
   totalTolls.forEach((obj) => {
-    result.daysSet.add(obj.date);
-    result.mhlw.daily.total[obj.date] = obj.dailyTotalTollOfMhlw;
-    result.mhlw.accum.total[obj.date] = obj.accumTotalTollOfMhlw;
+    setResult(
+      result,
+      obj.date,
+      "mhlw",
+      "total",
+      obj.dailyTotalToll,
+      obj.accumTotalToll
+    );
   });
   accumJsonData.forEach((obj) => {
-    result.daysSet.add(obj.date);
-    result.mhlw.daily.prefs[obj.date] = obj.dailyTollOfMhlw;
-    result.mhlw.accum.prefs[obj.date] = obj.accumTollOfMhlw;
+    ALL_PREFECTURES.forEach((pref, prefIndex) => {
+      setResult(
+        result,
+        obj.date,
+        "mhlw",
+        prefIndex,
+        obj.dailyToll[prefIndex],
+        obj.accumToll[prefIndex]
+      );
+    });
   });
   return result;
 };
+
+//// controls
 
 const getControls = () => {
   const getCheckedValueFromNodeList = (nodeList) => {
@@ -167,18 +303,21 @@ const getControls = () => {
   };
 };
 
-const setPrefSelect = (select, prefs, totalCount) => {
-  prefs.forEach((pref, index) => {
+const setPrefSelect = (select, result, lastDay) => {
+  ALL_PREFECTURES.forEach((pref, prefIndex) => {
+    const obj = result.accum[lastDay].pref[prefIndex];
+    const n = Math.max(obj.muni || 0, obj.mhlw || 0);
+
     let option = document.createElement("option");
-    option.setAttribute("value", index);
-    option.textContent = `${pref} (${totalCount[index]})`;
+    option.setAttribute("value", prefIndex);
+    option.textContent = `${pref} (${n})`;
     select.appendChild(option);
   });
 };
 
-const bindEvents = (config, canvas, chartData) => {
+const bindEvents = (config, canvas, result) => {
   const event = (e) => {
-    showChart(config, canvas, chartData, getControls());
+    showChart(config, canvas, result, getControls());
   };
   document.querySelectorAll(".control input").forEach((elem) => {
     elem.addEventListener("change", event);
@@ -188,29 +327,23 @@ const bindEvents = (config, canvas, chartData) => {
   });
 };
 
-// window.chart
-// pref: index of pref or "total" for total
-const showChart = (config, canvas, chartData, controlConfig) => {
-  const labels = chartData.days
+//// chart
+
+const showChart = (config, canvas, result, controlConfig) => {
+  const labels = result.days
     .filter((day) => day >= controlConfig.minDate)
     .sort();
   config.data.labels = labels;
-  const accumType = controlConfig.accumType;
-  if (controlConfig.pref === "total") {
-    config.data.datasets[0].data = labels.map(
-      (day) => chartData.mhlw[accumType].total[day]
-    );
-    config.data.datasets[1].data = labels.map(
-      (day) => chartData.muni[accumType].total[day]
-    );
-  } else {
-    config.data.datasets[0].data = labels.map(
-      (day) => (chartData.mhlw[accumType].prefs[day] || [])[controlConfig.pref]
-    );
-    config.data.datasets[1].data = labels.map(
-      (day) => (chartData.muni[accumType].prefs[day] || [])[controlConfig.pref]
-    );
-  }
+
+  const targetObjs = labels.map((day) => {
+    if (controlConfig.pref === "total") {
+      return result[controlConfig.accumType][day].total;
+    } else {
+      return result[controlConfig.accumType][day].pref[controlConfig.pref];
+    }
+  });
+  config.data.datasets[0].data = targetObjs.map((obj) => obj.mhlw);
+  config.data.datasets[1].data = targetObjs.map((obj) => obj.muni);
 
   config.options.scales.yAxes[0].type = controlConfig.yScale;
   if (controlConfig.accumType === "accum") {
@@ -290,14 +423,15 @@ const init = async () => {
     },
   };
 
-  let result = await getNcovData();
+  let result = getInitialResult();
+  result = await getNcovData(result);
   result = await getMhlwData(result);
-  result.days = Array.from(result.daysSet).sort();
-  delete result.daysSet;
+  setResultDays(result);
+
   setPrefSelect(
     document.querySelector(".control select[name=pref]"),
-    result.prefs,
-    result.muni.accum.prefs[result.days[result.days.length - 1]]
+    result,
+    result.days[result.days.length - 1]
   );
   showChart(config, document.getElementById("canvas"), result, getControls());
   bindEvents(config, document.getElementById("canvas"), result);
