@@ -370,7 +370,7 @@ const init = async () => {
       labels: [],
       datasets: [
         {
-          label: "厚労省発表",
+          label: "厚労省突合済",
           backgroundColor: Color("#1654db").alpha(0.5).rgbString(),
           borderColor: "#1654db",
           fill: false,
