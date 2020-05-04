@@ -147,7 +147,10 @@ const getNcovData = async (result) => {
       "https://raw.githubusercontent.com/swsoyee/2019-ncov-japan/master/50_Data/death.csv"
     )
   ).text();
-  const lines = csvTextData.replace("\r", "").split("\n");
+  const lines = csvTextData
+    .replace("\r", "")
+    .split("\n")
+    .filter((line) => line.indexOf(",") != -1);
   const csvPrefs = lines[0].split(",").slice(1, 48);
   const csvData = lines.slice(1).map((str) => {
     const strs = str.split(",");
