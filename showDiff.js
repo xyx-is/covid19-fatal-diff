@@ -95,7 +95,7 @@ const prefIsTotal = (pref) => {
  *   "daily" | "accum"
  *     day
  *       "total" | pref[pref number]
- *         "muni" | "mhlw"
+ *         "muni" | "mhlw" | "mhlwTentative"
  *   days
  */
 
@@ -106,7 +106,7 @@ const getInitialResult = () => {
   };
 };
 
-// source: "muni" | "mhlw"
+// source: "muni" | "mhlw" | "mhlwTentative"
 // pref: "total" | pref number
 const setResult = (result, day, source, pref, dailyNum, accumNum) => {
   [
@@ -119,10 +119,11 @@ const setResult = (result, day, source, pref, dailyNum, accumNum) => {
     // initialize
     if (!target[day]) {
       target[day] = {
-        total: { muni: null, mhlw: null },
+        total: { muni: null, mhlw: null, mhlwTentative: null },
         pref: ALL_PREFECTURES.map((p) => ({
           muni: null,
           mhlw: null,
+          /* mhlwTentative: null, */
         })),
       };
     }
@@ -211,6 +212,7 @@ const getMhlwData = async (result) => {
     return {
       date: dateString(arr[0], arr[1], arr[2]),
       accumTotalToll: arr[3],
+      accumTentativeTotalToll: arr[4] === "" ? null : arr[3] + arr[4],
     };
   });
   // fix total death tolls date offset
@@ -218,14 +220,19 @@ const getMhlwData = async (result) => {
     return {
       date: totalTollsOffset[index].date,
       accumTotalToll: obj.accumTotalToll,
+      accumTentativeTotalToll: obj.accumTentativeTotalToll,
     };
   });
   totalTolls.forEach((obj, index) => {
     if (index === 0) {
       obj.dailyTotalToll = obj.accumTotalToll;
+      obj.dailyTentativeTotalToll = obj.accumTentativeTotalToll;
     } else {
       obj.dailyTotalToll =
         obj.accumTotalToll - totalTolls[index - 1].accumTotalToll;
+      obj.dailyTentativeTotalToll =
+        obj.accumTentativeTotalToll -
+        totalTolls[index - 1].accumTentativeTotalToll;
     }
   });
   const accumJsonData = jsonData["prefectures-data"].deaths.map((arr) => {
@@ -262,6 +269,14 @@ const getMhlwData = async (result) => {
       "total",
       obj.dailyTotalToll,
       obj.accumTotalToll
+    );
+    setResult(
+      result,
+      obj.date,
+      "mhlwTentative",
+      "total",
+      obj.dailyTentativeTotalToll,
+      obj.accumTentativeTotalToll
     );
   });
   accumJsonData.forEach((obj) => {
@@ -348,8 +363,9 @@ const showChart = (config, canvas, result, controlConfig) => {
       return result[controlConfig.accumType][day].pref[controlConfig.pref];
     }
   });
-  config.data.datasets[0].data = targetObjs.map((obj) => obj.mhlw);
-  config.data.datasets[1].data = targetObjs.map((obj) => obj.muni);
+  config.data.datasets[0].data = targetObjs.map((obj) => obj.mhlwTentative);
+  config.data.datasets[1].data = targetObjs.map((obj) => obj.mhlw);
+  config.data.datasets[2].data = targetObjs.map((obj) => obj.muni);
 
   config.options.scales.yAxes[0].type = controlConfig.yScale;
   if (controlConfig.accumType === "accum") {
@@ -372,6 +388,14 @@ const init = async () => {
     data: {
       labels: [],
       datasets: [
+        {
+          label: "厚労省確認中",
+          backgroundColor: Color("#16db19").alpha(0.5).rgbString(),
+          borderColor: "#16db19",
+          fill: false,
+          lineTension: 0,
+          data: [],
+        },
         {
           label: "厚労省突合済",
           backgroundColor: Color("#1654db").alpha(0.5).rgbString(),
