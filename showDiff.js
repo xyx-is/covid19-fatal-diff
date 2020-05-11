@@ -60,7 +60,7 @@ const arrayScalarProd = (k, array) => {
 };
 // sum of array
 const arraySum = (array) => {
-  return array.reduce((a, b) => a + b);
+  return array.reduce((a, b) => a + b, 0);
 };
 
 const assocToMap = (assoc) => {
@@ -208,33 +208,6 @@ const getMhlwData = async (result) => {
     )
   ).json();
   const overwriteJsonData = await (await fetch("./Overwrite.json")).json();
-  const totalTollsOffset = jsonData.transition.deaths.map((arr) => {
-    return {
-      date: dateString(arr[0], arr[1], arr[2]),
-      accumTotalToll: arr[3],
-      accumTentativeTotalToll: arr[4] === "" ? null : arr[3] + arr[4],
-    };
-  });
-  // fix total death tolls date offset
-  const totalTolls = totalTollsOffset.slice(1).map((obj, index) => {
-    return {
-      date: totalTollsOffset[index].date,
-      accumTotalToll: obj.accumTotalToll,
-      accumTentativeTotalToll: obj.accumTentativeTotalToll,
-    };
-  });
-  totalTolls.forEach((obj, index) => {
-    if (index === 0) {
-      obj.dailyTotalToll = obj.accumTotalToll;
-      obj.dailyTentativeTotalToll = obj.accumTentativeTotalToll;
-    } else {
-      obj.dailyTotalToll =
-        obj.accumTotalToll - totalTolls[index - 1].accumTotalToll;
-      obj.dailyTentativeTotalToll =
-        obj.accumTentativeTotalToll -
-        totalTolls[index - 1].accumTentativeTotalToll;
-    }
-  });
   const accumJsonData = jsonData["prefectures-data"].deaths.map((arr) => {
     return {
       date: dateString(arr[0], arr[1], arr[2]),
@@ -261,6 +234,34 @@ const getMhlwData = async (result) => {
     }
   });
 
+  const totalTolls = jsonData.transition.deaths.map((arr) => {
+    const date = dateString(arr[0], arr[1], arr[2]);
+    return {
+      date: date,
+      accumTotalToll:
+        date < "2020-04-13"
+          ? arr[3]
+          : date < "2020-05-08"
+          ? accumJsonData
+              .filter((obj) => obj.date === date)
+              .map((obj) => arraySum(obj.accumToll))[0] || null
+          : null,
+      accumTentativeTotalToll: date >= "2020-04-13" ? arr[3] : null,
+    };
+  });
+  totalTolls.forEach((obj, index) => {
+    if (index === 0) {
+      obj.dailyTotalToll = obj.accumTotalToll;
+      obj.dailyTentativeTotalToll = obj.accumTentativeTotalToll;
+    } else {
+      obj.dailyTotalToll =
+        obj.accumTotalToll - totalTolls[index - 1].accumTotalToll;
+      obj.dailyTentativeTotalToll =
+        obj.accumTentativeTotalToll -
+        totalTolls[index - 1].accumTentativeTotalToll;
+    }
+  });
+
   totalTolls.forEach((obj) => {
     setResult(
       result,
@@ -280,16 +281,29 @@ const getMhlwData = async (result) => {
     );
   });
   accumJsonData.forEach((obj) => {
-    ALL_PREFECTURES.forEach((pref, prefIndex) => {
-      setResult(
-        result,
-        obj.date,
-        "mhlw",
-        prefIndex,
-        obj.dailyToll[prefIndex],
-        obj.accumToll[prefIndex]
-      );
-    });
+    if (obj.date <= "2020-05-07") {
+      ALL_PREFECTURES.forEach((pref, prefIndex) => {
+        setResult(
+          result,
+          obj.date,
+          "mhlw",
+          prefIndex,
+          obj.dailyToll[prefIndex],
+          obj.accumToll[prefIndex]
+        );
+      });
+    } else {
+      ALL_PREFECTURES.forEach((pref, prefIndex) => {
+        setResult(
+          result,
+          obj.date,
+          "mhlwTentative",
+          prefIndex,
+          obj.dailyToll[prefIndex],
+          obj.accumToll[prefIndex]
+        );
+      });
+    }
   });
   return result;
 };
