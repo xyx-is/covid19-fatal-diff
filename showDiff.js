@@ -255,10 +255,16 @@ const getMhlwData = async (result) => {
       obj.dailyTentativeTotalToll = obj.accumTentativeTotalToll;
     } else {
       obj.dailyTotalToll =
-        obj.accumTotalToll - totalTolls[index - 1].accumTotalToll;
+        obj.accumTotalToll === null ||
+        totalTolls[index - 1].accumTotalToll === null
+          ? null
+          : obj.accumTotalToll - totalTolls[index - 1].accumTotalToll;
       obj.dailyTentativeTotalToll =
-        obj.accumTentativeTotalToll -
-        totalTolls[index - 1].accumTentativeTotalToll;
+        obj.accumTentativeTotalToll === null ||
+        totalTolls[index - 1].accumTentativeTotalToll === null
+          ? null
+          : obj.accumTentativeTotalToll -
+            totalTolls[index - 1].accumTentativeTotalToll;
     }
   });
 
