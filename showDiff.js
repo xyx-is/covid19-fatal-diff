@@ -85,6 +85,10 @@ const dateString = (year, month, day) => {
     .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
 };
 
+const getDateStringByDateDiff = (fromDateString, diff) => {
+  return (new Date(Date.parse(`${fromDateString}T00:00:00Z`) + diff*24*60*60*1000)).toISOString().slice(0, 10);
+};
+
 // pref: "total" | pref number
 const prefIsTotal = (pref) => {
   return pref === "total";
@@ -208,10 +212,11 @@ const getMhlwData = async (result) => {
     )
   ).json();
   const overwriteJsonData = await (await fetch("./Overwrite.json")).json();
-  const accumJsonData = jsonData["prefectures-data"].deaths.map((arr) => {
+  const prefTollData = jsonData["prefectures-data"].deaths;
+  const accumJsonData = prefTollData.values.map((arr, index) => {
     return {
-      date: dateString(arr[0], arr[1], arr[2]),
-      accumToll: arr.slice(3),
+      date: getDateStringByDateDiff(dateString(prefTollData.from[0], prefTollData.from[1], prefTollData.from[2]), index),
+      accumToll: arr,
     };
   });
   overwriteJsonData.accumTollOfMhlw.forEach((arr, prefIndex) => {
@@ -234,19 +239,20 @@ const getMhlwData = async (result) => {
     }
   });
 
-  const totalTolls = jsonData.transition.deaths.map((arr) => {
-    const date = dateString(arr[0], arr[1], arr[2]);
+  const transitionTollData = jsonData.transition.deaths;
+  const totalTolls = transitionTollData.values.map((arr, index) => {
+    const date = getDateStringByDateDiff(dateString(transitionTollData.from[0], transitionTollData.from[1], transitionTollData.from[2]), index);
     return {
       date: date,
       accumTotalToll:
         date < "2020-04-13"
-          ? arr[3]
+          ? arr[0]
           : date < "2020-05-08"
           ? accumJsonData
               .filter((obj) => obj.date === date)
               .map((obj) => arraySum(obj.accumToll))[0] || null
           : null,
-      accumTentativeTotalToll: date >= "2020-04-13" ? arr[3] : null,
+      accumTentativeTotalToll: date >= "2020-04-13" ? arr[0] : null,
     };
   });
   totalTolls.forEach((obj, index) => {
