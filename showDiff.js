@@ -86,7 +86,11 @@ const dateString = (year, month, day) => {
 };
 
 const getDateStringByDateDiff = (fromDateString, diff) => {
-  return (new Date(Date.parse(`${fromDateString}T00:00:00Z`) + diff*24*60*60*1000)).toISOString().slice(0, 10);
+  return new Date(
+    Date.parse(`${fromDateString}T00:00:00Z`) + diff * 24 * 60 * 60 * 1000
+  )
+    .toISOString()
+    .slice(0, 10);
 };
 
 // pref: "total" | pref number
@@ -206,75 +210,28 @@ const getNcovData = async (result) => {
 };
 
 const getMhlwData = async (result) => {
-  const jsonData = await (
-    await fetch(
-      "https://raw.githubusercontent.com/kaz-ogiwara/covid19/master/data/data.json"
-    )
-  ).json();
-  const overwriteJsonData = await (await fetch("./Overwrite.json")).json();
-  const prefTollData = jsonData["prefectures-data"].deaths;
-  const accumJsonData = prefTollData.values.map((arr, index) => {
-    return {
-      date: getDateStringByDateDiff(dateString(prefTollData.from[0], prefTollData.from[1], prefTollData.from[2]), index),
-      accumToll: arr,
-    };
-  });
-  overwriteJsonData.accumTollOfMhlw.forEach((arr, prefIndex) => {
-    if (arr) {
-      accumJsonData.forEach((obj) => {
-        if (obj.date in arr) {
-          obj.accumToll[prefIndex] = arr[obj.date];
+  const originalJsonData = await (await fetch("./Overwrite.json")).json();
+  const jsonData = originalJsonData.mhlw;
+  jsonData.forEach((obj, index) => {
+    if (index === 0) {
+      obj.accumTotalToll = obj.dailyTotalToll;
+    } else {
+      if ("dailyToll" in obj) {
+        if ("accumToll" in jsonData[index - 1]) {
+          obj.accumToll = arrayAdd(
+            obj.dailyToll,
+            jsonData[index - 1].accumToll
+          );
+        } else {
+          obj.accumToll = obj.dailyToll;
         }
-      });
-    }
-  });
-  accumJsonData.forEach((obj, index) => {
-    if (index === 0) {
-      obj.dailyToll = obj.accumToll;
-    } else {
-      obj.dailyToll = arrayAdd(
-        obj.accumToll,
-        arrayScalarProd(-1, accumJsonData[index - 1].accumToll)
-      );
+      }
+      obj.accumTotalToll =
+        obj.dailyTotalToll + jsonData[index - 1].accumTotalToll;
     }
   });
 
-  const transitionTollData = jsonData.transition.deaths;
-  const totalTolls = transitionTollData.values.map((arr, index) => {
-    const date = getDateStringByDateDiff(dateString(transitionTollData.from[0], transitionTollData.from[1], transitionTollData.from[2]), index);
-    return {
-      date: date,
-      accumTotalToll:
-        date < "2020-04-13"
-          ? arr[0]
-          : date < "2020-05-08"
-          ? accumJsonData
-              .filter((obj) => obj.date === date)
-              .map((obj) => arraySum(obj.accumToll))[0] || null
-          : null,
-      accumTentativeTotalToll: date >= "2020-04-13" ? arr[0] : null,
-    };
-  });
-  totalTolls.forEach((obj, index) => {
-    if (index === 0) {
-      obj.dailyTotalToll = obj.accumTotalToll;
-      obj.dailyTentativeTotalToll = obj.accumTentativeTotalToll;
-    } else {
-      obj.dailyTotalToll =
-        obj.accumTotalToll === null ||
-        totalTolls[index - 1].accumTotalToll === null
-          ? null
-          : obj.accumTotalToll - totalTolls[index - 1].accumTotalToll;
-      obj.dailyTentativeTotalToll =
-        obj.accumTentativeTotalToll === null ||
-        totalTolls[index - 1].accumTentativeTotalToll === null
-          ? null
-          : obj.accumTentativeTotalToll -
-            totalTolls[index - 1].accumTentativeTotalToll;
-    }
-  });
-
-  totalTolls.forEach((obj) => {
+  jsonData.forEach((obj) => {
     setResult(
       result,
       obj.date,
@@ -283,17 +240,9 @@ const getMhlwData = async (result) => {
       obj.dailyTotalToll,
       obj.accumTotalToll
     );
-    setResult(
-      result,
-      obj.date,
-      "mhlwTentative",
-      "total",
-      obj.dailyTentativeTotalToll,
-      obj.accumTentativeTotalToll
-    );
   });
-  accumJsonData.forEach((obj) => {
-    if (obj.date <= "2020-05-07") {
+  jsonData.forEach((obj) => {
+    if ("dailyToll" in obj) {
       ALL_PREFECTURES.forEach((pref, prefIndex) => {
         setResult(
           result,
@@ -304,18 +253,90 @@ const getMhlwData = async (result) => {
           obj.accumToll[prefIndex]
         );
       });
-    } else {
-      ALL_PREFECTURES.forEach((pref, prefIndex) => {
-        setResult(
-          result,
-          obj.date,
-          "mhlwTentative",
-          prefIndex,
-          obj.dailyToll[prefIndex],
-          obj.accumToll[prefIndex]
-        );
-      });
     }
+  });
+  return result;
+};
+
+const getMhlwTentative = async (result) => {
+  const originalJsonData = await (
+    await fetch(
+      "https://raw.githubusercontent.com/kaz-ogiwara/covid19/master/data/data.json"
+    )
+  ).json();
+  const prefTollData = originalJsonData["prefectures-data"].deaths;
+  const prefJsonData = prefTollData.values.map((arr, index) => {
+    return {
+      date: getDateStringByDateDiff(
+        dateString(
+          prefTollData.from[0],
+          prefTollData.from[1],
+          prefTollData.from[2]
+        ),
+        index
+      ),
+      dailyToll: arr,
+    };
+  });
+  prefJsonData.forEach((obj, index) => {
+    if (index === 0) {
+      obj.accumToll = obj.dailyToll;
+    } else {
+      obj.accumToll = arrayAdd(
+        obj.dailyToll,
+        prefJsonData[index - 1].accumToll
+      );
+    }
+  });
+
+  const transitionTollData = originalJsonData.transition.deaths;
+  const totalTolls = transitionTollData.values.map((arr, index) => {
+    const date = getDateStringByDateDiff(
+      dateString(
+        transitionTollData.from[0],
+        transitionTollData.from[1],
+        transitionTollData.from[2]
+      ),
+      index
+    );
+    return {
+      date: date,
+      dailyTotalToll: arr[0],
+    };
+  });
+  totalTolls.forEach((obj, index) => {
+    if (index === 0) {
+      obj.accumTotalToll = obj.dailyTotalToll;
+    } else {
+      obj.accumTotalToll =
+        obj.dailyTotalToll === null ||
+        totalTolls[index - 1].dailyTotalToll === null
+          ? null
+          : obj.dailyTotalToll + totalTolls[index - 1].accumTotalToll;
+    }
+  });
+
+  totalTolls.forEach((obj) => {
+    setResult(
+      result,
+      obj.date,
+      "mhlwTentative",
+      "total",
+      obj.dailyTotalToll,
+      obj.accumTotalToll
+    );
+  });
+  prefJsonData.forEach((obj) => {
+    ALL_PREFECTURES.forEach((pref, prefIndex) => {
+      setResult(
+        result,
+        obj.date,
+        "mhlwTentative",
+        prefIndex,
+        obj.dailyToll[prefIndex],
+        obj.accumToll[prefIndex]
+      );
+    });
   });
   return result;
 };
@@ -482,6 +503,7 @@ const init = async () => {
   let result = getInitialResult();
   result = await getNcovData(result);
   result = await getMhlwData(result);
+  result = await getMhlwTentative(result);
   setResultDays(result);
 
   setPrefSelect(
