@@ -264,29 +264,38 @@ const getMhlwTentative = async (result) => {
       "https://raw.githubusercontent.com/kaz-ogiwara/covid19/master/data/data.json"
     )
   ).json();
-  const prefTollData = originalJsonData["prefectures-data"].deaths;
-  const prefJsonData = prefTollData.values.map((arr, index) => {
-    return {
-      date: getDateStringByDateDiff(
-        dateString(
-          prefTollData.from[0],
-          prefTollData.from[1],
-          prefTollData.from[2]
+  const prefsData = originalJsonData["prefectures-data"];
+  prefsData.map((prefData, prefIndex) => {
+    const prefTollData = prefData.deaths.values.map((value, dateIndex) => {
+      return {
+        date: getDateStringByDateDiff(
+          dateString(
+            prefData.deaths.from[0],
+            prefData.deaths.from[1],
+            prefData.deaths.from[2]
+          ),
+          dateIndex
         ),
-        index
-      ),
-      dailyToll: arr,
-    };
-  });
-  prefJsonData.forEach((obj, index) => {
-    if (index === 0) {
-      obj.accumToll = obj.dailyToll;
-    } else {
-      obj.accumToll = arrayAdd(
+        dailyToll: value[0],
+      };
+    });
+    prefTollData.forEach((obj, index) => {
+      if (index === 0) {
+        obj.accumToll = obj.dailyToll;
+      } else {
+        obj.accumToll = obj.dailyToll + prefTollData[index - 1].accumToll;
+      }
+    });
+    prefTollData.forEach((obj) => {
+      setResult(
+        result,
+        obj.date,
+        "mhlwTentative",
+        prefIndex,
         obj.dailyToll,
-        prefJsonData[index - 1].accumToll
+        obj.accumToll
       );
-    }
+    });
   });
 
   const transitionTollData = originalJsonData.transition.deaths;
@@ -325,18 +334,6 @@ const getMhlwTentative = async (result) => {
       obj.dailyTotalToll,
       obj.accumTotalToll
     );
-  });
-  prefJsonData.forEach((obj) => {
-    ALL_PREFECTURES.forEach((pref, prefIndex) => {
-      setResult(
-        result,
-        obj.date,
-        "mhlwTentative",
-        prefIndex,
-        obj.dailyToll[prefIndex],
-        obj.accumToll[prefIndex]
-      );
-    });
   });
   return result;
 };
